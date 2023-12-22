@@ -7,14 +7,16 @@ locals {
 
 # Create an AWS EC2 instance named "test-ec2" and assign the IAM instance profile
 resource "aws_instance" "test-ec2" {
-  ami                    = "ami-02cad064a29d4550c"
-  instance_type          = "t2.micro"
-  key_name               = "ec2-keypair"
-  subnet_id              = local.subnet_id
-  vpc_security_group_ids = local.security_group_ids
-  iam_instance_profile   = aws_iam_instance_profile.test_profile.name
+  ami                  = "ami-02cad064a29d4550c"
+  instance_type        = "t2.micro"
+  subnet_id            = local.subnet_id
+  key_name             = "ec2-keypair"
+  iam_instance_profile = "IAM_Role_SSM"
+  tags = {
+    Name = "test-ec2"
+  }
 
-  # Define an attached volume for the instance
+  # Attached volume for the instance
   ebs_block_device {
     device_name = "/dev/xvda"
     volume_type = "gp3"
@@ -23,7 +25,7 @@ resource "aws_instance" "test-ec2" {
     snapshot_id = "snap-0536df1fed2e4b339"
   }
 
-  # Define user data script for instance boot-up
+  # User data script for instance boot-up
   user_data = <<-EOF
     #!/bin/bash
     # Script to create timestamp for every EC2 reboot
@@ -45,3 +47,26 @@ resource "aws_instance" "test-ec2" {
     prevent_destroy = true
   }
 }
+
+resource "aws_security_group" "ec2_sg" {
+  name        = "test-ec2-security-group"
+  description = "Security group for test-ec2 instance"
+  vpc_id      = local.vpc_id
+
+  # Inbound rule
+  ingress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    security_groups = local.security_group_ids # Source security group ID
+  }
+
+  # Outbound rule
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
